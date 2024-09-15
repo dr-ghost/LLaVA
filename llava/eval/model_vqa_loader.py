@@ -55,7 +55,7 @@ class CustomDataset(Dataset):
 
         input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt')
 
-        return input_ids, image_tensor, image.size
+        return input_ids, image_tensor, image.size, int(line["question_id"].split('q')[1])
 
     def __len__(self):
         return len(self.questions)
@@ -70,7 +70,7 @@ def collate_fn(batch):
 
 # DataLoader
 def create_data_loader(questions, image_folder, tokenizer, image_processor, model_config, batch_size=1, num_workers=4):
-    assert batch_size == 1, "batch_size must be 1"
+    #assert batch_size == 1, "batch_size must be 1"
     dataset = CustomDataset(questions, image_folder, tokenizer, image_processor, model_config)
     data_loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, collate_fn=collate_fn)
     return data_loader
@@ -93,11 +93,11 @@ def eval_model(args):
         args.conv_mode = args.conv_mode + '_mmtag'
         print(f'It seems that this is a plain model, but it is not using a mmtag prompt, auto switching to {args.conv_mode}.')
 
-    data_loader = create_data_loader(questions, args.image_folder, tokenizer, image_processor, model.config)
+    data_loader = create_data_loader(questions, args.image_folder, tokenizer, image_processor, model.config, batch_size=args.batch_size)
 
-    for (input_ids, image_tensor, image_sizes), line in tqdm(zip(data_loader, questions), total=len(questions)):
-        idx = line["question_id"]
-        cur_prompt = line["text"]
+    for (input_ids, image_tensor, image_sizes, line_idx) in tqdm(data_loader, total=len(data_loader/args.batch_size)):
+        #idx = line["question_id"]
+        #cur_prompt = line["text"]
 
         input_ids = input_ids.to(device='cuda', non_blocking=True)
 
@@ -115,14 +115,16 @@ def eval_model(args):
 
         outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
 
-        ans_id = shortuuid.uuid()
-        ans_file.write(json.dumps({"question_id": idx,
-                                   "prompt": cur_prompt,
-                                   "text": outputs,
-                                   "answer_id": ans_id,
-                                   "model_id": model_name,
-                                   "metadata": {}}) + "\n")
-        # ans_file.flush()
+        # Assuming line_idx and outputs are batched (e.g., as lists or tensors)
+        for idx, output in zip(line_idx, outputs):
+            ans_id = shortuuid.uuid()
+            ans_file.write(json.dumps({
+                "question_id": 'q' + str(idx),   # Each question ID in the batch
+                "text": output,       # Each generated output in the batch
+                "answer_id": ans_id,
+                "model_id": model_name
+            }) + "\n")
+            # ans_file.flush()
     ans_file.close()
 
 if __name__ == "__main__":
@@ -132,6 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--image-folder", type=str, default="")
     parser.add_argument("--question-file", type=str, default="tables/question.jsonl")
     parser.add_argument("--answers-file", type=str, default="answer.jsonl")
+    parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--conv-mode", type=str, default="llava_v1")
     parser.add_argument("--num-chunks", type=int, default=1)
     parser.add_argument("--chunk-idx", type=int, default=0)
