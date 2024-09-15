@@ -59,7 +59,7 @@ class CustomDataset(Dataset):
 
         input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt')
 
-        return index, input_ids, image_tensor
+        return index, input_ids, image_tensor, image.size
 
     def __len__(self):
         return len(self.questions)
@@ -82,13 +82,13 @@ class DataCollatorForVisualTextGeneration(object):
 
     def __call__(self,
                  batch: List[Tuple[torch.Tensor, torch.Tensor]]) -> Tuple[torch.Tensor, torch.Tensor]:
-        indices, input_ids, images = zip(*batch)
+        indices, input_ids, images, image_sizes = zip(*batch)
         input_ids = self.pad_sequence(
             input_ids,
             batch_first=True,
             padding_value=self.tokenizer.pad_token_id)
         images = torch.stack(images, dim=0)
-        return indices, input_ids, images
+        return indices, input_ids, images, image_sizes
 
 # DataLoader
 def create_data_loader(questions, image_folder, tokenizer, image_processor, model_config, batch_size=1, num_workers=4):
@@ -128,7 +128,7 @@ def eval_model(args):
         num_workers=args.num_workers,
     )
 
-    for (indices, input_ids, image_tensor) in tqdm(data_loader):
+    for (indices, input_ids, image_tensor, image_sizes) in tqdm(data_loader):
         
         input_ids = input_ids.to(device='cuda', non_blocking=True)
         
@@ -136,6 +136,7 @@ def eval_model(args):
             output_ids = model.generate(
                 input_ids,
                 images=image_tensor.to(dtype=torch.float16, device='cuda', non_blocking=True),
+                image_sizes=image_sizes,
                 do_sample=True if args.temperature > 0 else False,
                 temperature=args.temperature,
                 top_p=args.top_p,
