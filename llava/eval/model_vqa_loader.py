@@ -4,6 +4,9 @@ import os
 import json
 from tqdm import tqdm
 import shortuuid
+import numpy as np
+from PIL import ImageOps
+from torch.nn.utils.rnn import pad_sequence
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
@@ -60,14 +63,40 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.questions)
 
+def pad_input_ids(input_ids, pad_token_id):
+    """
+    Pad the input IDs to have the same length.
+    """
+    return pad_sequence(input_ids, batch_first=True, padding_value=pad_token_id)
+
+def pad_image_tensor(image_tensor, target_size):
+    """
+    Pad the image tensor to have the target_size with zeros.
+    """
+    padded_image_tensor = torch.zeros((image_tensor.shape[0], image_tensor.shape[1], target_size[0], target_size[1]), dtype=image_tensor.dtype)
+
+    padded_image_tensor[:, :, :image_tensor.shape[-2], :image_tensor.shape[-1]] = image_tensor
+    return padded_image_tensor
+
 
 def collate_fn(batch):
     input_ids, image_tensors, image_sizes, idexs = zip(*batch)
-    print(len(input_ids), input_ids[0].shape)
-    print(len(image_tensors), image_tensors[0].shape)
-    input_ids = torch.stack(input_ids, dim=0)
-    image_tensors = torch.stack(image_tensors, dim=0)
-    return input_ids, image_tensors, image_sizes, idexs
+    
+    pad_token_id = 0
+    padded_input_ids = pad_input_ids(input_ids, pad_token_id)
+    
+    max_height = max(image.size[-2] for image in image_tensors)
+    max_width = max(image.size[-1] for image in image_tensors)
+
+    padded_image_tensors = []
+    for image_tensor in image_tensors:
+        padded_image_tensor = pad_image_tensor(image_tensor, (max_height, max_width))
+        padded_image_tensors.append(padded_image_tensor)
+    
+    padded_input_ids = torch.stack(padded_input_ids, dim=0)
+    padded_image_tensors = torch.stack(padded_image_tensors, dim=0)
+    
+    return padded_input_ids, padded_image_tensors, image_sizes, idexs
 
 
 # DataLoader
