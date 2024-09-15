@@ -147,7 +147,7 @@ def eval_model(args):
 
         outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
         
-        print("!")
+        #print("!")
 
         # Assuming line_idx and outputs are batched (e.g., as lists or tensors)
         for idx, output in zip(line_idx, outputs):
