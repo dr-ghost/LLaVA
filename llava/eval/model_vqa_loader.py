@@ -85,8 +85,8 @@ def collate_fn(batch):
     pad_token_id = 0
     padded_input_ids = pad_input_ids(input_ids, pad_token_id)
     
-    max_height = max(image.size[-2] for image in image_tensors)
-    max_width = max(image.size[-1] for image in image_tensors)
+    max_height = max(image.shape[-2] for image in image_tensors)
+    max_width = max(image.shape[-1] for image in image_tensors)
 
     padded_image_tensors = []
     for image_tensor in image_tensors:
