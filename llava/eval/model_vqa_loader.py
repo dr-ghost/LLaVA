@@ -84,7 +84,7 @@ def collate_fn(batch):
     
     pad_token_id = 0
     padded_input_ids = pad_input_ids(input_ids, pad_token_id)
-    print(padded_input_ids.shape)
+    #print(padded_input_ids.shape)
     
     max_height = max(image.shape[-2] for image in image_tensors)
     max_width = max(image.shape[-1] for image in image_tensors)
@@ -94,7 +94,7 @@ def collate_fn(batch):
         padded_image_tensor = pad_image_tensor(image_tensor, (max_height, max_width))
         padded_image_tensors.append(padded_image_tensor)
     
-    padded_input_ids = torch.stack(padded_input_ids, dim=0)
+    #padded_input_ids = torch.stack(padded_input_ids, dim=0)
     padded_image_tensors = torch.stack(padded_image_tensors, dim=0)
     
     return padded_input_ids, padded_image_tensors, image_sizes, idexs
