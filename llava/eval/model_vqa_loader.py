@@ -95,7 +95,7 @@ def eval_model(args):
 
     data_loader = create_data_loader(questions, args.image_folder, tokenizer, image_processor, model.config, batch_size=args.batch_size)
 
-    for (input_ids, image_tensor, image_sizes, line_idx) in tqdm(data_loader, total=len(data_loader/args.batch_size)):
+    for (input_ids, image_tensor, image_sizes, line_idx) in tqdm(data_loader, total=len(data_loader)/args.batch_size):
         #idx = line["question_id"]
         #cur_prompt = line["text"]
 
