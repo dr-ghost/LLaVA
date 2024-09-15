@@ -73,9 +73,9 @@ def pad_image_tensor(image_tensor, target_size):
     """
     Pad the image tensor to have the target_size with zeros.
     """
-    padded_image_tensor = torch.zeros((image_tensor.shape[0], image_tensor.shape[1], target_size[0], target_size[1]), dtype=image_tensor.dtype)
+    padded_image_tensor = torch.zeros((target_size[2], image_tensor.shape[1], target_size[0], target_size[1]), dtype=image_tensor.dtype)
 
-    padded_image_tensor[:, :, :image_tensor.shape[-2], :image_tensor.shape[-1]] = image_tensor
+    padded_image_tensor[:image_tensor.shape[0], :, :image_tensor.shape[-2], :image_tensor.shape[-1]] = image_tensor
     return padded_image_tensor
 
 
@@ -88,10 +88,11 @@ def collate_fn(batch):
     
     max_height = max(image.shape[-2] for image in image_tensors)
     max_width = max(image.shape[-1] for image in image_tensors)
+    max_one = max(image.shape[0] for image in image_tensors)
 
     padded_image_tensors = []
     for image_tensor in image_tensors:
-        padded_image_tensor = pad_image_tensor(image_tensor, (max_height, max_width))
+        padded_image_tensor = pad_image_tensor(image_tensor, (max_height, max_width, max_one))
         padded_image_tensors.append(padded_image_tensor)
     
     #padded_input_ids = torch.stack(padded_input_ids, dim=0)
