@@ -64,6 +64,14 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.questions)
 
+def pad_image_tensor(image_tensor, target_size):
+    """
+    Pad the image tensor to have the target_size with zeros.
+    """
+    padded_image_tensor = torch.zeros((target_size[2], image_tensor.shape[1], target_size[0], target_size[1]), dtype=image_tensor.dtype)
+
+    padded_image_tensor[:image_tensor.shape[0], :, :image_tensor.shape[-2], :image_tensor.shape[-1]] = image_tensor
+    return padded_image_tensor
 
 @dataclass
 class DataCollatorForVisualTextGeneration(object):
@@ -87,7 +95,19 @@ class DataCollatorForVisualTextGeneration(object):
             input_ids,
             batch_first=True,
             padding_value=self.tokenizer.pad_token_id)
-        images = torch.stack(images, dim=0)
+        
+        max_height = max(image.shape[-2] for image in images)
+        max_width = max(image.shape[-1] for image in images)
+        max_one = max(image.shape[0] for image in images)
+
+        padded_image_tensors = []
+        for image_tensor in images:
+            padded_image_tensor = pad_image_tensor(image_tensor, (max_height, max_width, max_one))
+            padded_image_tensors.append(padded_image_tensor)
+        
+        #padded_input_ids = torch.stack(padded_input_ids, dim=0)
+        images = torch.stack(padded_image_tensors, dim=0)
+        
         return indices, input_ids, images, image_sizes
 
 # DataLoader
