@@ -19,6 +19,9 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import math
 
+import warnings
+
+
 
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
@@ -120,10 +123,12 @@ def create_data_loader(questions, image_folder, tokenizer, image_processor, mode
 
 def eval_model(args):
     # Model
-    disable_torch_init()
-    model_path = os.path.expanduser(args.model_path)
-    model_name = get_model_name_from_path(model_path)
-    tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        disable_torch_init()
+        model_path = os.path.expanduser(args.model_path)
+        model_name = get_model_name_from_path(model_path)
+        tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
 
     # set padding side to `left` for batch text generation
     model.config.tokenizer_padding_side = tokenizer.padding_side = "left"
